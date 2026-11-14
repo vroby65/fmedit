@@ -8,8 +8,10 @@ z_reset() {
     text='' saved='' file='' pos=0 anchor=-1 clipboard=''
     top=0 left=0 rows=24 cols=80 height=21 gutter=5
     message='' query='' running=1 goal=-1 key='' reply=''
-    undo_text=() undo_pos=() redo_text=() redo_pos=()
+    undo_text=() undo_value=() undo_start=() undo_pos=()
+    redo_text=() redo_value=() redo_start=() redo_pos=()
     input_queue='' input_char='' resize_pending=0
+    indexed_text='' buffer_lines=('') buffer_offsets=(0)
 }
 
 z_load() {
@@ -55,27 +57,39 @@ z_save() {
 }
 
 z_checkpoint() {
-    undo_text+=("$text"); undo_pos+=("$pos")
+    local start=$1 end=$2 value=$3
+    # Store only the replaced range, not a full snapshot per keystroke.
+    undo_text+=("${text:start:end-start}"); undo_value+=("$value")
+    undo_start+=("$start"); undo_pos+=("$pos")
     if (( ${#undo_text[@]} > Z_HISTORY_LIMIT )); then
         undo_text=("${undo_text[@]:1}"); undo_pos=("${undo_pos[@]:1}")
+        undo_value=("${undo_value[@]:1}"); undo_start=("${undo_start[@]:1}")
     fi
-    redo_text=() redo_pos=()
+    redo_text=() redo_value=() redo_start=() redo_pos=()
 }
 
 z_undo() {
-    local n=${#undo_text[@]}
+    local n=${#undo_text[@]} start end
     (( n )) || { message='Niente da annullare'; return; }
-    redo_text+=("$text"); redo_pos+=("$pos")
-    text=${undo_text[n-1]} pos=${undo_pos[n-1]} anchor=-1 goal=-1
-    unset 'undo_text[n-1]' 'undo_pos[n-1]'
+    ((n-=1))
+    redo_text+=("${undo_text[n]}"); redo_value+=("${undo_value[n]}")
+    redo_start+=("${undo_start[n]}"); redo_pos+=("$pos")
+    start=${undo_start[n]} end=$((start+${#undo_value[n]}))
+    text=${text:0:start}${undo_text[n]}${text:end}
+    pos=${undo_pos[n]} anchor=-1 goal=-1
+    unset 'undo_text[n]' 'undo_value[n]' 'undo_start[n]' 'undo_pos[n]'
 }
 
 z_redo() {
-    local n=${#redo_text[@]}
+    local n=${#redo_text[@]} start end
     (( n )) || { message='Niente da ripetere'; return; }
-    undo_text+=("$text"); undo_pos+=("$pos")
-    text=${redo_text[n-1]} pos=${redo_pos[n-1]} anchor=-1 goal=-1
-    unset 'redo_text[n-1]' 'redo_pos[n-1]'
+    ((n-=1))
+    undo_text+=("${redo_text[n]}"); undo_value+=("${redo_value[n]}")
+    undo_start+=("${redo_start[n]}"); undo_pos+=("$pos")
+    start=${redo_start[n]} end=$((start+${#redo_text[n]}))
+    text=${text:0:start}${redo_value[n]}${text:end}
+    pos=${redo_pos[n]} anchor=-1 goal=-1
+    unset 'redo_text[n]' 'redo_value[n]' 'redo_start[n]' 'redo_pos[n]'
 }
 
 z_selection() {
@@ -90,7 +104,7 @@ z_insert() {
     local value=$1 start end
     z_selection || :
     [[ -n $value || $end != "$start" ]] || return
-    z_checkpoint
+    z_checkpoint "$start" "$end" "$value"
     text=${text:0:start}$value${text:end}
     pos=$((start + ${#value})) anchor=-1 goal=-1
 }
@@ -120,18 +134,33 @@ z_cut() {
     if z_selection; then z_copy; z_insert ''; else message='Nessuna selezione'; fi
 }
 
+# Cache logical lines and character offsets; navigation never rescans the file.
+z_index() {
+    [[ $text != "$indexed_text" ]] || return 0
+    local i offset=0
+    mapfile -t buffer_lines <<< "$text"
+    buffer_offsets=()
+    for ((i=0; i<${#buffer_lines[@]}; i++)); do
+        buffer_offsets[i]=$offset
+        ((offset+=${#buffer_lines[i]}+1))
+    done
+    indexed_text=$text
+}
+
 z_location() {
-    local prefix=${text:0:pos} tail
-    tail=${prefix##*$'\n'}
-    column=${#tail} line_start=$((pos-column))
-    prefix=${prefix//[^$'\n']/}
-    row=${#prefix}
-    tail=${text:pos}; tail=${tail%%$'\n'*}
-    line_end=$((pos+${#tail}))
+    z_index
+    local low=0 high=$((${#buffer_lines[@]}-1)) middle
+    while (( low < high )); do
+        middle=$(((low+high+1)/2))
+        if (( buffer_offsets[middle] <= pos )); then low=$middle
+        else high=$((middle-1)); fi
+    done
+    row=$low line_start=${buffer_offsets[low]}
+    column=$((pos-line_start)) line_end=$((line_start+${#buffer_lines[low]}))
 }
 
 z_move() {
-    local direction=$1 selecting=${2:-0} row column line_start line_end previous next length
+    local direction=$1 selecting=${2:-0} row column line_start line_end length
     if (( selecting )); then (( anchor >= 0 )) || anchor=$pos; else anchor=-1; fi
     z_location
     case $direction in
@@ -144,12 +173,10 @@ z_move() {
         up|down)
             (( goal >= 0 )) || goal=$column
             if [[ $direction == up ]] && (( line_start > 0 )); then
-                previous=${text:0:line_start-1}; previous=${previous##*$'\n'}
-                length=${#previous}; pos=$((line_start-1-length))
+                length=${#buffer_lines[row-1]}; pos=${buffer_offsets[row-1]}
                 (( goal < length )) && ((pos+=goal)) || ((pos+=length))
             elif [[ $direction == down ]] && (( line_end < ${#text} )); then
-                next=${text:line_end+1}; next=${next%%$'\n'*}
-                length=${#next}; pos=$((line_end+1))
+                length=${#buffer_lines[row+1]}; pos=${buffer_offsets[row+1]}
                 (( goal < length )) && ((pos+=goal)) || ((pos+=length))
             fi ;;
     esac
@@ -193,15 +220,15 @@ z_size() {
 
 z_render() {
     local row column line_start line_end prefix number count offset=0 index=0
-    local rest=$text current visible char expanded visual=0 cursor_col=0 i r start end
+    local current char expanded visual=0 cursor_col=0 i r start end
     local screen=$'\e[?25l\e[H' label dirty='' style='' next_style='' quoted='' escaped=0 comment=0
     z_location
-    prefix=${text//[^$'\n']/}; count=$((${#prefix}+1))
+    count=${#buffer_lines[@]}
     gutter=$((${#count}+2)); (( gutter >= 4 )) || gutter=4
     (( gutter < cols-2 )) || gutter=4
     (( row < top )) && top=$row
     (( row >= top+height )) && top=$((row-height+1))
-    prefix=${text:line_start:column}
+    prefix=${buffer_lines[row]:0:column}
     for ((i=0; i<${#prefix}; i++)); do
         if [[ ${prefix:i:1} == $'\t' ]]; then ((cursor_col+=4-cursor_col%4)); else ((cursor_col+=1)); fi
     done
@@ -211,14 +238,11 @@ z_render() {
     z_safe "${file:-[nuovo file]}"; label=" fmedit | $safe$dirty"
     screen+=$'\e[1;44;97m'${label:0:cols}$'\e[K\e[0m'
     z_selection || :
+    index=$top
     for ((r=0; r<height;)); do
-        if (( index < top )); then
-            current=${rest%%$'\n'*}; offset=$((offset+${#current}+1))
-            if [[ $rest == *$'\n'* ]]; then rest=${rest#*$'\n'}; ((index+=1)); continue; fi
-        fi
         screen+=$'\r\n\e[0m\e[K'
         if (( index < count )); then
-            current=${rest%%$'\n'*}
+            current=${buffer_lines[index]}; offset=${buffer_offsets[index]}
             printf -v number '%*d ' "$((gutter-1))" "$((index+1))"
             screen+=$'\e[90m'$number$'\e[0m'
             visual=0 style='' quoted='' escaped=0 comment=0
@@ -250,8 +274,6 @@ z_render() {
                 done
                 (( visual >= left+cols-gutter )) && break
             done
-            offset=$((offset+${#current}+1))
-            if [[ $rest == *$'\n'* ]]; then rest=${rest#*$'\n'}; else rest=''; fi
         else screen+=$'\e[90m~\e[0m'; fi
         ((index+=1, r+=1))
     done

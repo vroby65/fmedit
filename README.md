@@ -2,7 +2,7 @@
 
 Un piccolo editor da terminale scritto in Bash, ispirato al progetto Zepto
 presente in questa macchina. Un solo script, senza compilazione e senza ncurses.
-Questa prima versione punta ai file di testo piccoli e agli script di shell.
+È pensato per i file di testo e gli script di shell.
 
 ## Avvio
 
@@ -47,6 +47,10 @@ intercettano i tasti funzione o Shift+frecce.
 ## Funzionamento
 
 - Numeri di riga, scorrimento verticale e orizzontale, indicatore delle modifiche.
+  Un indice delle righe evita di ripercorrere il documento a ogni spostamento;
+  il disegno legge direttamente le righe della pagina visibile.
+- Undo/redo conserva solo il testo sostituito e inserito, fino a 100 modifiche,
+  anziché copiare l’intero documento per ogni carattere digitato.
 - Colori essenziali per commenti, stringhe e `$` nei file `.sh` e `.bashrc`;
   l'analisi è limitata alla singola riga.
 - Incolla dal terminale tramite bracketed paste, registrato come una modifica.
@@ -62,10 +66,11 @@ intercettano i tasti funzione o Shift+frecce.
 
 ## Limiti attuali
 
-Il buffer e ogni voce della cronologia sono stringhe Bash: file grandi e righe
-molto lunghe possono risultare lenti e consumare molta memoria. Ogni carattere
-digitato è una voce di cronologia. Emoji, caratteri a doppia larghezza e segni
-combinanti possono disallineare il cursore. I caratteri di controllo nei file sono
+Il buffer resta una stringa Bash e l’indice viene ricostruito dopo le modifiche:
+file molto grandi e righe molto lunghe possono ancora risultare lenti. Le
+selezioni estese conservate nella cronologia possono consumare molta memoria.
+Ogni carattere digitato è una voce di cronologia. Emoji, caratteri a doppia
+larghezza e segni combinanti possono disallineare il cursore. I caratteri di controllo nei file sono
 mostrati come `?`; non vengono inviati direttamente al terminale.
 
 Non sono ancora presenti mouse, buffer multipli, sostituzione del testo o
@@ -85,3 +90,5 @@ python3 -m unittest discover -s tests -v
 
 Comprendono le operazioni sul buffer, la conservazione dei file e sessioni reali
 su pseudo-terminale per scorciatoie, incolla, prompt e ripristino del terminale.
+Verificano anche navigazione e modifica su 40.000 righe con i comandi esterni
+disabilitati, e salvataggio su 10.000 righe con UTF-8 e CRLF.

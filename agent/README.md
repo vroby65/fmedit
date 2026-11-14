@@ -11,6 +11,12 @@ né dipendenze ncurses. Consultare `README.md` per comandi e limiti supportati.
 - Installazione utente: collegamento a `fmedit` in `~/.local/bin`, come nel README.
 
 Le modifiche al buffer devono rispettare selezione e cronologia undo/redo.
+La cronologia conserva intervalli sostituiti e inseriti, posizione della modifica
+e cursore, non copie complete del buffer. `z_checkpoint` riceve inizio, fine e
+testo inserito prima della sostituzione. `z_index` mantiene `buffer_lines` e
+`buffer_offsets` in caratteri, ricostruiti quando `text` cambia; `z_location`
+cerca la riga nell’indice e il rendering accede solo alle righe visibili.
+Una riga vuota finale rappresenta il newline finale del buffer.
 Preservare esattamente i byte dei file supportati e rifiutare i NUL. Il salvataggio
 usa un temporaneo nella destinazione, mantiene i permessi e segue i symlink.
 Il rendering non deve eseguire sequenze di controllo provenienti dai file.

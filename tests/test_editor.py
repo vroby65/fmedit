@@ -95,6 +95,57 @@ eq "$saved" newold; eq "$text" newXold
 file=.; if z_save; then exit 1; fi
 ''')
 
+    def test_large_buffer_navigation_and_render(self):
+        self.run_bash(r'''
+# No external commands in indexing, movement, editing or rendering.
+PATH=/nonexistent
+printf -v text 'abcdefghi\n%.0s' {1..40000}
+saved=$text
+exec 3>/dev/null
+z_move bottom; z_render
+z_move up; z_render
+z_insert X; z_render
+z_undo; z_render
+z_redo; z_render
+z_location
+eq "$row" 39999
+eq "$column" 1
+''')
+
+    def test_locations_after_edits_and_history(self):
+        self.run_bash(r'''
+check_locations() {
+    local expected_row=0 expected_column=0 p row column line_start line_end tail
+    for ((p=0; p<=${#text}; p++)); do
+        pos=$p; z_location
+        eq "$row" "$expected_row"; eq "$column" "$expected_column"
+        eq "$line_start" "$((p-expected_column))"
+        tail=${text:p}; tail=${tail%%$'\n'*}
+        eq "$line_end" "$((p+${#tail}))"
+        if [[ ${text:p:1} == $'\n' ]]; then
+            ((expected_row+=1)); expected_column=0
+        else ((expected_column+=1)); fi
+    done
+}
+for text in '' abc $'\n' $'a\n\n' $'caffè\tX\r\n猫\nend'; do
+    check_locations
+    pos=0; z_insert $'nuova\nriga\n'; check_locations
+    anchor=1; pos=$((${#text}-1)); z_insert X; check_locations
+    z_undo; check_locations; z_redo; check_locations
+done
+''')
+
+    def test_history_stores_edits_and_restores_cursor(self):
+        self.run_bash(r'''
+text=$'caffè\n猫\n'; saved=$text
+pos=2; anchor=7; z_insert $'X\nY'
+eq "${undo_text[0]}" $'ffè\n猫'
+eq "${undo_value[0]}" $'X\nY'
+pos=0; z_undo; eq "$text" "$saved"; eq "$pos" 2
+z_redo; eq "$text" $'caX\nY\n'; eq "$pos" 0
+z_undo; z_insert '!'; eq "${#redo_text[@]}" 0
+''')
+
     def test_history_limit(self):
         self.run_bash('''
 Z_HISTORY_LIMIT=3
@@ -194,6 +245,16 @@ class TerminalTests(unittest.TestCase):
         self.assertEqual(self.path.read_bytes(), b"ciao\nMondo!")
         terminal.send(b"\x11")
         self.assertEqual(terminal.finish(), 0)
+        terminal.assert_restored(self)
+
+    def test_large_file_edit_history_and_save(self):
+        original = "caffè\tuno\r\n".encode() * 10000
+        self.path.write_bytes(original)
+        terminal = self.terminal(self.path)
+        terminal.send(b"\x1b[1;5F" + "猫".encode() + b"\x1a\x19")
+        terminal.send(b"\x1b[1;5H!\x1b[21~")
+        self.assertEqual(terminal.finish(), 0)
+        self.assertEqual(self.path.read_bytes(), b"!" + original + "猫".encode())
         terminal.assert_restored(self)
 
     def test_paste_is_one_undo_and_preserves_control_bytes(self):
