@@ -16,7 +16,7 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[1]
-EDITOR = ROOT / "z.sh"
+EDITOR = ROOT / "fmedit"
 
 
 class BufferTests(unittest.TestCase):

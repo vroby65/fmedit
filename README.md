@@ -1,4 +1,4 @@
-# z.sh
+# fmedit
 
 Un piccolo editor da terminale scritto in Bash, ispirato al progetto Zepto
 presente in questa macchina. Un solo script, senza compilazione e senza ncurses.
@@ -7,9 +7,9 @@ Questa prima versione punta ai file di testo piccoli e agli script di shell.
 ## Avvio
 
 ```bash
-./z.sh appunti.txt
-./z.sh                  # nuovo buffer senza nome
-./z.sh -- -nome-file    # nome che inizia con un trattino
+./fmedit appunti.txt
+./fmedit                  # nuovo buffer senza nome
+./fmedit -- -nome-file    # nome che inizia con un trattino
 ```
 
 Richiede Bash 4+, un terminale con sequenze ANSI/VT e le utility `stty`, `mktemp`,
@@ -20,7 +20,7 @@ Per aggiungerlo al proprio PATH, dalla cartella del progetto:
 
 ```bash
 mkdir -p ~/.local/bin
-ln -s "$PWD/z.sh" ~/.local/bin/z.sh
+ln -s "$PWD/fmedit" ~/.local/bin/fmedit
 ```
 
 ## Comandi
@@ -79,7 +79,7 @@ in caso di interruzione dell'alimentazione.
 I test richiedono Python 3 della distribuzione e usano solo la libreria standard:
 
 ```bash
-bash -n z.sh
+bash -n fmedit
 python3 -m unittest discover -s tests -v
 ```
 

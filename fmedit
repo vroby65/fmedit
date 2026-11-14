@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# z.sh — a small terminal editor. Editing and rendering use Bash builtins.
+# fmedit — a small terminal editor. Editing and rendering use Bash builtins.
 
 Z_VERSION=0.1.0
 Z_HISTORY_LIMIT=100
@@ -38,7 +38,7 @@ z_save() {
     [[ ! -e $target || -f $target ]] || { message='La destinazione non è un file regolare'; return 1; }
     [[ ! -e $target || -w $target ]] || { message='File non scrivibile'; return 1; }
     dir=${target%/*}; [[ $target == */* ]] || dir=.
-    temp=$(mktemp -- "$dir/.z.sh.XXXXXXXX") || { message='Impossibile creare il file temporaneo'; return 1; }
+    temp=$(mktemp -- "$dir/.fmedit.XXXXXXXX") || { message='Impossibile creare il file temporaneo'; return 1; }
     if [[ -e $target ]]; then
         if ! cp -p -- "$target" "$temp"; then
             rm -f -- "$temp"; message='Impossibile preservare i permessi'; return 1
@@ -208,7 +208,7 @@ z_render() {
     (( cursor_col < left )) && left=$cursor_col
     (( cursor_col >= left+cols-gutter )) && left=$((cursor_col-cols+gutter+1))
     [[ $text == "$saved" ]] || dirty=' *'
-    z_safe "${file:-[nuovo file]}"; label=" z.sh | $safe$dirty"
+    z_safe "${file:-[nuovo file]}"; label=" fmedit | $safe$dirty"
     screen+=$'\e[1;44;97m'${label:0:cols}$'\e[K\e[0m'
     z_selection || :
     for ((r=0; r<height;)); do
@@ -381,7 +381,7 @@ z_quit() {
 
 z_help() {
     local lines=(
-        'z.sh — comandi'
+        'fmedit — comandi'
         ''
         'F2 / Ctrl+S       Salva'
         'F10              Salva ed esci'
@@ -445,18 +445,18 @@ z_cleanup() {
 }
 
 z_main() {
-    if (( BASH_VERSINFO[0] < 4 )); then printf 'z.sh richiede Bash 4 o successivo.\n' >&2; return 1; fi
+    if (( BASH_VERSINFO[0] < 4 )); then printf 'fmedit richiede Bash 4 o successivo.\n' >&2; return 1; fi
     case ${1:-} in
         --help|-h)
-            printf 'z.sh %s — editor da terminale in Bash\nUso: z.sh [--] [file]\nF1 aiuto · F2 salva · F7 cerca · F10 salva/esci · Esc esci\n' "$Z_VERSION"; return ;;
-        --version) printf 'z.sh %s\n' "$Z_VERSION"; return ;;
+            printf 'fmedit %s — editor da terminale in Bash\nUso: fmedit [--] [file]\nF1 aiuto · F2 salva · F7 cerca · F10 salva/esci · Esc esci\n' "$Z_VERSION"; return ;;
+        --version) printf 'fmedit %s\n' "$Z_VERSION"; return ;;
         --) shift ;;
         -*) printf 'Opzione sconosciuta: %s\n' "$1" >&2; return 2 ;;
     esac
-    (( $# <= 1 )) || { printf 'Uso: z.sh [--] [file]\n' >&2; return 2; }
+    (( $# <= 1 )) || { printf 'Uso: fmedit [--] [file]\n' >&2; return 2; }
     z_reset
-    if (( $# )) && ! z_load "$1"; then printf 'z.sh: %s\n' "$message" >&2; return 1; fi
-    if ! { exec 3<> /dev/tty; } 2>/dev/null; then printf 'z.sh: serve un terminale interattivo.\n' >&2; return 1; fi
+    if (( $# )) && ! z_load "$1"; then printf 'fmedit: %s\n' "$message" >&2; return 1; fi
+    if ! { exec 3<> /dev/tty; } 2>/dev/null; then printf 'fmedit: serve un terminale interattivo.\n' >&2; return 1; fi
     tty_state=$(stty -g <&3) || { exec 3>&-; return 1; }
     trap z_cleanup EXIT
     trap 'exit 129' HUP
