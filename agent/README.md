@@ -1,5 +1,7 @@
 # Guida alla manutenzione
 
+Il branch `italiano` mantiene interfaccia, conferme, documentazione e test in italiano; `main` è in inglese. Applicare gli aggiornamenti funzionali a entrambi, conservando la lingua di ciascuno. Per modifiche specifiche alla versione italiana, commit e push vanno su `italiano`.
+
 `fmedit` è un editor da terminale per Linux scritto in Bash 4+, senza compilazione
 né dipendenze ncurses. Consultare `README.md` per comandi e limiti supportati.
 

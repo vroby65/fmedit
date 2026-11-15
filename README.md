@@ -1,5 +1,7 @@
 # fmedit
 
+Questa è la versione italiana, mantenuta nel branch `italiano`. La versione inglese è nel [branch `main`](https://github.com/vroby65/fmedit/tree/main). Per scegliere questa versione in un clone, eseguire `git switch italiano`.
+
 Un piccolo editor da terminale scritto in Bash, ispirato al progetto Zepto
 presente in questa macchina. Un solo script, senza compilazione e senza ncurses.
 È pensato per i file di testo e gli script di shell.
@@ -41,6 +43,7 @@ ln -s "$PWD/fmedit" ~/.local/bin/fmedit
 | Ctrl+N | Cerca l'occorrenza successiva, ricominciando dall'inizio |
 
 Nei prompt si scrive la risposta e si preme Invio; Esc annulla.
+Il collegamento di installazione segue il branch attualmente selezionato nel clone.
 Il terminale deve inoltrare le combinazioni all'editor: alcune applicazioni
 intercettano i tasti funzione o Shift+frecce.
 
