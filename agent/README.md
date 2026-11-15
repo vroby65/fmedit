@@ -1,36 +1,34 @@
-# Maintenance guide
+# Guida alla manutenzione
 
-`fmedit` is a Linux terminal editor written in Bash 4+, with no compilation or
-ncurses dependency. See `README.md` for commands and supported limitations.
+Il branch `italiano` mantiene interfaccia, conferme, documentazione e test in italiano; `main` è in inglese. Applicare gli aggiornamenti funzionali a entrambi, conservando la lingua di ciascuno. Per modifiche specifiche alla versione italiana, commit e push vanno su `italiano`.
 
-`main` is English; `italiano` preserves the Italian version. Keep prompts, their
-accepted answers, documentation and PTY expectations consistent within each branch.
-Functional changes should be ported explicitly to the other branch, preserving
-its language.
+`fmedit` è un editor da terminale per Linux scritto in Bash 4+, senza compilazione
+né dipendenze ncurses. Consultare `README.md` per comandi e limiti supportati.
 
-- `fmedit`: the only source and executable. `z_main` initializes the terminal and
-  starts the input, dispatch and rendering loop. It can be sourced to test
-  functions without starting the interface.
-- `tests/test_editor.py`: buffer, save and pseudo-terminal tests using only the
-  Python standard library.
-- User installation: a symlink to `fmedit` in `~/.local/bin`, as in the README.
+- `fmedit`: unico sorgente ed eseguibile. `z_main` inizializza il terminale e avvia
+  il ciclo lettura, dispatch e rendering; può essere caricato con `source` per
+  verificare le funzioni senza avviare l'interfaccia.
+- `tests/test_editor.py`: test del buffer, dei salvataggi e di sessioni su
+  pseudo-terminale, con la sola libreria standard Python.
+- Installazione utente: collegamento a `fmedit` in `~/.local/bin`, come nel README.
 
-The ANSI `Z_*` palette matches `fm` for the editor, selection, bars, prompts and
-help. Style changes must retain an explicit background.
+La palette ANSI `Z_*` riprende i colori di `fm` per editor, selezione, barre,
+prompt e aiuto; ogni cambio di stile deve mantenere lo sfondo esplicito.
 
-Buffer changes must respect selection and undo/redo history. History stores
-replaced and inserted ranges, edit location and cursor, never full buffer copies.
-`z_checkpoint` receives the start, end and inserted text before replacement.
-`z_index` maintains `buffer_lines` and `buffer_offsets` in characters, rebuilding
-them when `text` changes; `z_location` searches the index and rendering accesses
-only visible lines. An empty final line represents the buffer's final newline.
-Preserve supported file bytes exactly and reject NUL. Saving uses a temporary
-file in the destination directory, preserves permissions and follows symlinks.
-Rendering must never execute control sequences from files. Every exit must
-restore the terminal. Trap functions must account for Bash dynamic variable
-scope, including `IFS`.
+Le modifiche al buffer devono rispettare selezione e cronologia undo/redo.
+La cronologia conserva intervalli sostituiti e inseriti, posizione della modifica
+e cursore, non copie complete del buffer. `z_checkpoint` riceve inizio, fine e
+testo inserito prima della sostituzione. `z_index` mantiene `buffer_lines` e
+`buffer_offsets` in caratteri, ricostruiti quando `text` cambia; `z_location`
+cerca la riga nell’indice e il rendering accede solo alle righe visibili.
+Una riga vuota finale rappresenta il newline finale del buffer.
+Preservare esattamente i byte dei file supportati e rifiutare i NUL. Il salvataggio
+usa un temporaneo nella destinazione, mantiene i permessi e segue i symlink.
+Il rendering non deve eseguire sequenze di controllo provenienti dai file.
+Ogni uscita deve ripristinare lo stato del terminale. Le funzioni richiamate dai
+trap devono considerare lo scope dinamico delle variabili Bash, incluso `IFS`.
 
-Verify from the project root:
+Verifica dalla radice del progetto:
 
 ```bash
 bash -n fmedit
