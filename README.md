@@ -46,6 +46,8 @@ intercettano i tasti funzione o Shift+frecce.
 
 ## Funzionamento
 
+- Palette coordinata con `fm`: sfondo grigio scuro, testo giallo tenue e
+  selezione petrolio; barre, prompt e aiuto usano gli stessi colori di `fm`.
 - Numeri di riga, scorrimento verticale e orizzontale, indicatore delle modifiche.
   Un indice delle righe evita di ripercorrere il documento a ogni spostamento;
   il disegno legge direttamente le righe della pagina visibile.

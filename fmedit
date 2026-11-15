@@ -4,6 +4,17 @@
 Z_VERSION=0.1.0
 Z_HISTORY_LIMIT=100
 
+# Same ANSI 256-color palette as fm.
+Z_PANEL=$'\e[0;38;5;144;48;5;237m'
+Z_TITLE=$'\e[1;38;5;144;48;5;237m'
+Z_COMMENT=$'\e[0;38;5;250;48;5;237m'
+Z_STRING=$'\e[0;38;5;120;48;5;237m'
+Z_VARIABLE=$'\e[0;38;5;117;48;5;237m'
+Z_SELECTION=$'\e[0;38;5;252;48;5;23m'
+Z_STATUS=$'\e[0;38;5;236;48;5;250m'
+Z_NOTICE=$'\e[0;38;5;255;48;5;237m'
+Z_DIALOG=$'\e[0;38;5;252;48;5;239m'
+
 z_reset() {
     text='' saved='' file='' pos=0 anchor=-1 clipboard=''
     top=0 left=0 rows=24 cols=80 height=21 gutter=5
@@ -236,49 +247,49 @@ z_render() {
     (( cursor_col >= left+cols-gutter )) && left=$((cursor_col-cols+gutter+1))
     [[ $text == "$saved" ]] || dirty=' *'
     z_safe "${file:-[nuovo file]}"; label=" fmedit | $safe$dirty"
-    screen+=$'\e[1;44;97m'${label:0:cols}$'\e[K\e[0m'
+    screen+=$Z_TITLE${label:0:cols}$'\e[K'$Z_PANEL
     z_selection || :
     index=$top
     for ((r=0; r<height;)); do
-        screen+=$'\r\n\e[0m\e[K'
+        screen+=$'\r\n'$Z_PANEL$'\e[K'
         if (( index < count )); then
             current=${buffer_lines[index]}; offset=${buffer_offsets[index]}
             printf -v number '%*d ' "$((gutter-1))" "$((index+1))"
-            screen+=$'\e[90m'$number$'\e[0m'
+            screen+=$Z_COMMENT$number$Z_PANEL
             visual=0 style='' quoted='' escaped=0 comment=0
             for ((i=0; i<${#current}; i++)); do
                 char=${current:i:1}; expanded=$char; next_style=''
                 # Deliberately small, line-local shell highlighting.
                 if [[ $file == *.sh || $file == */.bashrc || $file == .bashrc ]]; then
-                    if (( comment )); then next_style=$'\e[90m'
+                    if (( comment )); then next_style=$Z_COMMENT
                     elif [[ -n $quoted ]]; then
-                        next_style=$'\e[32m'
+                        next_style=$Z_STRING
                         if (( escaped )); then escaped=0
                         elif [[ $char == \\ && $quoted == '"' ]]; then escaped=1
                         elif [[ $char == "$quoted" ]]; then quoted=''; fi
                     elif [[ $char == '#' && ( $i == 0 || ${current:i-1:1} == [[:space:]] ) ]]; then
-                        comment=1; next_style=$'\e[90m'
-                    elif [[ $char == '"' || $char == "'" ]]; then quoted=$char; next_style=$'\e[32m'
-                    elif [[ $char == '$' ]]; then next_style=$'\e[36m'
+                        comment=1; next_style=$Z_COMMENT
+                    elif [[ $char == '"' || $char == "'" ]]; then quoted=$char; next_style=$Z_STRING
+                    elif [[ $char == '$' ]]; then next_style=$Z_VARIABLE
                     fi
                 fi
-                if (( offset+i >= start && offset+i < end )); then next_style=$'\e[7m'; fi
+                if (( offset+i >= start && offset+i < end )); then next_style=$Z_SELECTION; fi
                 if [[ $char == $'\t' ]]; then printf -v expanded '%*s' "$((4-visual%4))" ''
                 else z_safe "$char"; expanded=$safe; fi
                 for ((number=0; number<${#expanded}; number++)); do
                     if (( visual >= left && visual < left+cols-gutter )); then
-                        if [[ $style != "$next_style" ]]; then screen+=$'\e[0m'$next_style; style=$next_style; fi
+                        if [[ $style != "$next_style" ]]; then screen+=$Z_PANEL$next_style; style=$next_style; fi
                         screen+=${expanded:number:1}
                     fi
                     ((visual+=1))
                 done
                 (( visual >= left+cols-gutter )) && break
             done
-        else screen+=$'\e[90m~\e[0m'; fi
+        else screen+=$Z_COMMENT'~'$Z_PANEL; fi
         ((index+=1, r+=1))
     done
     label=" F1 aiuto | F2 salva | F7 cerca | F10 salva/esci | $((row+1)):$((column+1))"
-    screen+=$'\r\n\e[0;7m'${label:0:cols}$'\e[K\e[0m\r\n'
+    screen+=$'\r\n'$Z_STATUS${label:0:cols}$'\e[K\r\n'$Z_NOTICE
     z_safe "$message"; screen+=${safe:0:cols}$'\e[K'
     printf -v label '\e[%d;%dH\e[?25h' "$((row-top+2))" "$((cursor_col-left+gutter+1))"
     printf '%s%s' "$screen" "$label" >&3
@@ -358,7 +369,7 @@ z_prompt() {
     local label=$1 value=${2:-} char safe i
     while :; do
         z_safe "$label$value"
-        printf '\e[%d;1H\e[0m%s\e[K' "$rows" "${safe:0:cols}" >&3
+        printf '\e[%d;1H%s%s\e[K' "$rows" "$Z_DIALOG" "${safe:0:cols}" >&3
         z_read_key || continue
         case $key in
             $'\r'|$'\n') reply=$value; return 0 ;;
@@ -422,7 +433,7 @@ z_help() {
         'Incolla dal terminale: supporto bracketed paste.'
         'Premere un tasto per tornare.'
     ) line n=0
-    printf '\e[2J\e[H' >&3
+    printf '%s\e[2J\e[H' "$Z_DIALOG" >&3
     for line in "${lines[@]}"; do
         (( n < rows-1 )) || break
         printf '%s\r\n' "${line:0:cols}" >&3; ((n+=1))

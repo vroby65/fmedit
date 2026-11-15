@@ -10,6 +10,9 @@ né dipendenze ncurses. Consultare `README.md` per comandi e limiti supportati.
   pseudo-terminale, con la sola libreria standard Python.
 - Installazione utente: collegamento a `fmedit` in `~/.local/bin`, come nel README.
 
+La palette ANSI `Z_*` riprende i colori di `fm` per editor, selezione, barre,
+prompt e aiuto; ogni cambio di stile deve mantenere lo sfondo esplicito.
+
 Le modifiche al buffer devono rispettare selezione e cronologia undo/redo.
 La cronologia conserva intervalli sostituiti e inseriti, posizione della modifica
 e cursore, non copie complete del buffer. `z_checkpoint` riceve inizio, fine e
