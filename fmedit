@@ -28,43 +28,43 @@ z_reset() {
 z_load() {
     local path=$1 data=''
     if [[ -e $path ]]; then
-        [[ -f $path && -r $path ]] || { message='File non leggibile o non regolare'; return 1; }
+        [[ -f $path && -r $path ]] || { message='File is unreadable or not a regular file'; return 1; }
         # A successful read with a NUL delimiter means this is a binary file.
         if IFS= read -r -d '' data < "$path"; then
-            message='File binario: i byte NUL non sono supportati'; return 1
+            message='Binary file: NUL bytes are not supported'; return 1
         fi
     elif [[ -L $path ]]; then
-        message='Collegamento simbolico senza destinazione'; return 1
+        message='Symbolic link has no target'; return 1
     elif [[ ! -d ${path%/*} && $path == */* ]]; then
-        message='La cartella del file non esiste'; return 1
+        message='The file directory does not exist'; return 1
     fi
     text=$data saved=$data file=$path pos=0 anchor=-1 top=0 left=0
 }
 
 z_save() {
     local target=$file temp dir
-    [[ -n $target ]] || { message='Specificare un nome con Ctrl+S'; return 1; }
+    [[ -n $target ]] || { message='Specify a name with Ctrl+S'; return 1; }
     if [[ -L $target ]]; then
-        target=$(readlink -f -- "$target") || { message='Destinazione del collegamento non valida'; return 1; }
-        [[ -f $target ]] || { message='Destinazione del collegamento non valida'; return 1; }
+        target=$(readlink -f -- "$target") || { message='Invalid symbolic link target'; return 1; }
+        [[ -f $target ]] || { message='Invalid symbolic link target'; return 1; }
     fi
-    [[ ! -e $target || -f $target ]] || { message='La destinazione non è un file regolare'; return 1; }
-    [[ ! -e $target || -w $target ]] || { message='File non scrivibile'; return 1; }
+    [[ ! -e $target || -f $target ]] || { message='The destination is not a regular file'; return 1; }
+    [[ ! -e $target || -w $target ]] || { message='File is not writable'; return 1; }
     dir=${target%/*}; [[ $target == */* ]] || dir=.
-    temp=$(mktemp -- "$dir/.fmedit.XXXXXXXX") || { message='Impossibile creare il file temporaneo'; return 1; }
+    temp=$(mktemp -- "$dir/.fmedit.XXXXXXXX") || { message='Cannot create temporary file'; return 1; }
     if [[ -e $target ]]; then
         if ! cp -p -- "$target" "$temp"; then
-            rm -f -- "$temp"; message='Impossibile preservare i permessi'; return 1
+            rm -f -- "$temp"; message='Cannot preserve permissions'; return 1
         fi
     else
         # mktemp deliberately keeps new files private (0600).
         :
     fi
     if printf '%s' "$text" > "$temp" && mv -f -- "$temp" "$target"; then
-        saved=$text message='Salvato'; return 0
+        saved=$text message='Saved'; return 0
     fi
     rm -f -- "$temp"
-    message='Salvataggio fallito: il buffer resta modificato'; return 1
+    message='Save failed: the buffer remains modified'; return 1
 }
 
 z_checkpoint() {
@@ -81,7 +81,7 @@ z_checkpoint() {
 
 z_undo() {
     local n=${#undo_text[@]} start end
-    (( n )) || { message='Niente da annullare'; return; }
+    (( n )) || { message='Nothing to undo'; return; }
     ((n-=1))
     redo_text+=("${undo_text[n]}"); redo_value+=("${undo_value[n]}")
     redo_start+=("${undo_start[n]}"); redo_pos+=("$pos")
@@ -93,7 +93,7 @@ z_undo() {
 
 z_redo() {
     local n=${#redo_text[@]} start end
-    (( n )) || { message='Niente da ripetere'; return; }
+    (( n )) || { message='Nothing to redo'; return; }
     ((n-=1))
     undo_text+=("${redo_text[n]}"); undo_value+=("${redo_value[n]}")
     undo_start+=("${redo_start[n]}"); undo_pos+=("$pos")
@@ -136,13 +136,13 @@ z_delete() {
 
 z_copy() {
     local start end
-    if z_selection; then clipboard=${text:start:end-start}; message='Selezione copiata'
-    else message='Selezionare con Shift+frecce o Ctrl+A'; fi
+    if z_selection; then clipboard=${text:start:end-start}; message='Selection copied'
+    else message='Select with Shift+arrows or Ctrl+A'; fi
 }
 
 z_cut() {
     local start end
-    if z_selection; then z_copy; z_insert ''; else message='Nessuna selezione'; fi
+    if z_selection; then z_copy; z_insert ''; else message='No selection'; fi
 }
 
 # Cache logical lines and character offsets; navigation never rescans the file.
@@ -202,9 +202,9 @@ z_find() {
         prefix=${part%%"$needle"*}; pos=$((offset+${#prefix}))
     elif [[ $text == *"$needle"* ]]; then
         prefix=${text%%"$needle"*}; pos=${#prefix}
-    else message="Non trovato: $needle"; return 1
+    else message="Not found: $needle"; return 1
     fi
-    anchor=$((pos+${#needle})) goal=-1 message="Trovato: $needle (Ctrl+N: successivo)"
+    anchor=$((pos+${#needle})) goal=-1 message="Found: $needle (Ctrl+N: next)"
 }
 
 # Render untrusted file names and text as printable text, never terminal commands.
@@ -246,7 +246,7 @@ z_render() {
     (( cursor_col < left )) && left=$cursor_col
     (( cursor_col >= left+cols-gutter )) && left=$((cursor_col-cols+gutter+1))
     [[ $text == "$saved" ]] || dirty=' *'
-    z_safe "${file:-[nuovo file]}"; label=" fmedit | $safe$dirty"
+    z_safe "${file:-[new file]}"; label=" fmedit | $safe$dirty"
     screen+=$Z_TITLE${label:0:cols}$'\e[K'$Z_PANEL
     z_selection || :
     index=$top
@@ -288,7 +288,7 @@ z_render() {
         else screen+=$Z_COMMENT'~'$Z_PANEL; fi
         ((index+=1, r+=1))
     done
-    label=" F1 aiuto | F2 salva | F7 cerca | F10 salva/esci | $((row+1)):$((column+1))"
+    label=" F1 help | F2 save | F7 find | F10 save/quit | $((row+1)):$((column+1))"
     screen+=$'\r\n'$Z_STATUS${label:0:cols}$'\e[K\r\n'$Z_NOTICE
     z_safe "$message"; screen+=${safe:0:cols}$'\e[K'
     printf -v label '\e[%d;%dH\e[?25h' "$((row-top+2))" "$((cursor_col-left+gutter+1))"
@@ -388,12 +388,12 @@ z_prompt() {
 
 z_save_interactive() {
     if [[ -z $file ]]; then
-        z_prompt 'Salva come: ' || { message='Salvataggio annullato'; return 1; }
-        [[ -n $reply ]] || { message='Nome file vuoto'; return 1; }
+        z_prompt 'Save as: ' || { message='Save cancelled'; return 1; }
+        [[ -n $reply ]] || { message='Empty file name'; return 1; }
         if [[ -e $reply || -L $reply ]]; then
             local candidate=$reply
-            z_prompt 'Il file esiste. Sovrascrivere? (s/N): ' || return 1
-            [[ $reply == s || $reply == S ]] || return 1
+            z_prompt 'File exists. Overwrite? (y/N): ' || return 1
+            [[ $reply == y || $reply == Y ]] || return 1
             file=$candidate
         else file=$reply; fi
     fi
@@ -402,11 +402,11 @@ z_save_interactive() {
 
 z_quit() {
     if [[ $text != "$saved" ]]; then
-        z_prompt 'Modifiche non salvate: (s)alva / (e)sci / Invio annulla: ' || return
+        z_prompt 'Unsaved changes: (s)ave / (d)iscard / Enter cancels: ' || return
         case $reply in
             s|S) z_save_interactive || return ;;
-            e|E) : ;;
-            *) message='Uscita annullata'; return ;;
+            d|D) : ;;
+            *) message='Quit cancelled'; return ;;
         esac
     fi
     running=0
@@ -414,24 +414,24 @@ z_quit() {
 
 z_help() {
     local lines=(
-        'fmedit — comandi'
+        'fmedit — commands'
         ''
-        'F2 / Ctrl+S       Salva'
-        'F10              Salva ed esci'
-        'Esc / Ctrl+Q     Esci (con conferma se modificato)'
-        'F7 / Ctrl+F      Cerca testo letterale'
-        'Ctrl+N           Occorrenza successiva'
-        'Ctrl+Z / Ctrl+Y  Annulla / ripeti'
-        'Shift+frecce     Seleziona (anche Home/End)'
-        'Ctrl+A           Seleziona tutto'
-        'Ctrl+C/X/V       Copia / taglia / incolla interno'
-        'Home / End       Inizio / fine riga'
-        'Ctrl+Home/End    Inizio / fine documento'
-        'PgUp / PgDown    Pagina precedente / successiva'
-        'Tab              Tabulazione (4 colonne)'
+        'F2 / Ctrl+S       Save'
+        'F10              Save and quit'
+        'Esc / Ctrl+Q     Quit (confirm if modified)'
+        'F7 / Ctrl+F      Find literal text'
+        'Ctrl+N           Next occurrence'
+        'Ctrl+Z / Ctrl+Y  Undo / redo'
+        'Shift+arrows     Select (also Home/End)'
+        'Ctrl+A           Select all'
+        'Ctrl+C/X/V       Copy / cut / internal paste'
+        'Home / End       Start / end of line'
+        'Ctrl+Home/End    Start / end of document'
+        'PgUp / PgDown    Previous / next page'
+        'Tab              Tab (4 columns)'
         ''
-        'Incolla dal terminale: supporto bracketed paste.'
-        'Premere un tasto per tornare.'
+        'Terminal paste: bracketed paste supported.'
+        'Press any key to return.'
     ) line n=0
     printf '%s\e[2J\e[H' "$Z_DIALOG" >&3
     for line in "${lines[@]}"; do
@@ -455,7 +455,7 @@ z_dispatch() {
         $'\r'|$'\n') z_insert $'\n' ;; $'\t') z_insert $'\t' ;;
         SAVE|$'\023') z_save_interactive ;;
         SAVE_EXIT) if z_save_interactive; then running=0; fi ;;
-        SEARCH|$'\006') if z_prompt 'Cerca: ' "$query"; then query=$reply; z_find "$query" 0; fi ;;
+        SEARCH|$'\006') if z_prompt 'Find: ' "$query"; then query=$reply; z_find "$query" 0; fi ;;
         $'\016') z_find "$query" ;;
         $'\032') z_undo ;; $'\031') z_redo ;;
         $'\001') anchor=0; pos=${#text}; goal=-1 ;;
@@ -478,18 +478,18 @@ z_cleanup() {
 }
 
 z_main() {
-    if (( BASH_VERSINFO[0] < 4 )); then printf 'fmedit richiede Bash 4 o successivo.\n' >&2; return 1; fi
+    if (( BASH_VERSINFO[0] < 4 )); then printf 'fmedit requires Bash 4 or later.\n' >&2; return 1; fi
     case ${1:-} in
         --help|-h)
-            printf 'fmedit %s — editor da terminale in Bash\nUso: fmedit [--] [file]\nF1 aiuto · F2 salva · F7 cerca · F10 salva/esci · Esc esci\n' "$Z_VERSION"; return ;;
+            printf 'fmedit %s — Bash terminal editor\nUsage: fmedit [--] [file]\nF1 help · F2 save · F7 find · F10 save/quit · Esc quit\n' "$Z_VERSION"; return ;;
         --version) printf 'fmedit %s\n' "$Z_VERSION"; return ;;
         --) shift ;;
-        -*) printf 'Opzione sconosciuta: %s\n' "$1" >&2; return 2 ;;
+        -*) printf 'Unknown option: %s\n' "$1" >&2; return 2 ;;
     esac
-    (( $# <= 1 )) || { printf 'Uso: fmedit [--] [file]\n' >&2; return 2; }
+    (( $# <= 1 )) || { printf 'Usage: fmedit [--] [file]\n' >&2; return 2; }
     z_reset
     if (( $# )) && ! z_load "$1"; then printf 'fmedit: %s\n' "$message" >&2; return 1; fi
-    if ! { exec 3<> /dev/tty; } 2>/dev/null; then printf 'fmedit: serve un terminale interattivo.\n' >&2; return 1; fi
+    if ! { exec 3<> /dev/tty; } 2>/dev/null; then printf 'fmedit: an interactive terminal is required.\n' >&2; return 1; fi
     tty_state=$(stty -g <&3) || { exec 3>&-; return 1; }
     trap z_cleanup EXIT
     trap 'exit 129' HUP
@@ -499,7 +499,7 @@ z_main() {
     stty raw -echo <&3 || return 1
     printf '\e[?1049h\e[?2004h\e[2J' >&3
     z_size
-    message='F1: comandi | Ctrl+S: salva | Ctrl+Q: esci'
+    message='F1: commands | Ctrl+S: save | Ctrl+Q: quit'
     while (( running )); do
         z_render
         # Idle timeouts do not repaint the entire screen.

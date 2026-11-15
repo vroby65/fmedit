@@ -34,6 +34,14 @@ z_reset
             )
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
+    def test_english_help_and_invalid_option(self):
+        help_result = subprocess.run([str(EDITOR), "--help"], capture_output=True, text=True, check=True)
+        self.assertIn("Usage: fmedit", help_result.stdout)
+        self.assertIn("F2 save", help_result.stdout)
+        invalid = subprocess.run([str(EDITOR), "--unknown"], capture_output=True, text=True)
+        self.assertEqual(invalid.returncode, 2)
+        self.assertIn("Unknown option:", invalid.stderr)
+
     def test_edit_selection_history(self):
         self.run_bash('''
 z_insert $'uno\ndue'
@@ -172,7 +180,7 @@ class Terminal:
         fcntl.ioctl(self.master, termios.TIOCSWINSZ, struct.pack("HHHH", 24, 80, 0, 0))
         self.output = b""
         self.status = None
-        self.until(b"Ctrl+S: salva")
+        self.until(b"Ctrl+S: save")
 
     def drain(self, timeout=0.05):
         deadline = time.monotonic() + timeout
@@ -241,7 +249,7 @@ class TerminalTests(unittest.TestCase):
         terminal.send(b"ciao\rmondo")
         terminal.send(b"\x1b[H\x1b[3~M\x1b[F!")
         terminal.send(b"\x1bOQ")  # F2
-        terminal.until(b"Salvato")
+        terminal.until(b"Saved")
         self.assertEqual(self.path.read_bytes(), b"ciao\nMondo!")
         terminal.send(b"\x11")
         self.assertEqual(terminal.finish(), 0)
@@ -279,20 +287,38 @@ class TerminalTests(unittest.TestCase):
     def test_quit_cancel_save_as_and_empty_backspace(self):
         terminal = self.terminal()
         terminal.send(b"test\x11")
-        terminal.until(b"Modifiche non salvate")
+        terminal.until(b"Unsaved changes")
         terminal.send(b"\r")  # cancel quitting
         terminal.send(b"\x13")
-        terminal.until(b"Salva come:")
+        terminal.until(b"Save as:")
         terminal.send(b"\x7f" + str(self.path).encode() + b"\r")
-        terminal.until(b"Salvato")
+        terminal.until(b"Saved")
         terminal.send(b"\x11")
         self.assertEqual(terminal.finish(), 0)
         self.assertEqual(self.path.read_bytes(), b"test")
 
+    def test_english_overwrite_confirmation_and_quit_save(self):
+        self.path.write_bytes(b"original")
+        terminal = self.terminal()
+        terminal.send(b"replacement\x11")
+        terminal.until(b"Unsaved changes: (s)ave / (d)iscard")
+        terminal.send(b"s\r")
+        terminal.until(b"Save as:")
+        terminal.send(str(self.path).encode() + b"\r")
+        terminal.until(b"Overwrite? (y/N):")
+        terminal.send(b"\r")
+        self.assertEqual(self.path.read_bytes(), b"original")
+        terminal.send(b"\x11s\r")
+        terminal.send(str(self.path).encode() + b"\r")
+        terminal.send(b"y\r")
+        self.assertEqual(terminal.finish(), 0)
+        self.assertEqual(self.path.read_bytes(), b"replacement")
+        terminal.assert_restored(self)
+
     def test_discard_and_signal_restore(self):
         self.path.write_bytes(b"originale")
         terminal = self.terminal(self.path)
-        terminal.send(b"X\x11e\r")
+        terminal.send(b"X\x11d\r")
         self.assertEqual(terminal.finish(), 0)
         self.assertEqual(self.path.read_bytes(), b"originale")
         terminal.assert_restored(self)
@@ -313,9 +339,9 @@ class TerminalTests(unittest.TestCase):
         terminal = self.terminal()
         terminal.send("caffè più".encode())
         terminal.send(b"\x13")
-        terminal.until(b"Salva come:")
+        terminal.until(b"Save as:")
         terminal.send(b"\x1b[200~" + str(self.path).encode() + b"\x11\x13\x1b[201~\r")
-        terminal.until(b"Salvato")
+        terminal.until(b"Saved")
         fcntl.ioctl(terminal.master, termios.TIOCSWINSZ, struct.pack("HHHH", 15, 40, 0, 0))
         terminal.send(b"\x11")
         self.assertEqual(terminal.finish(), 0)

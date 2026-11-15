@@ -1,1 +1,1 @@
-Prima di modificare il progetto, leggere `agent/README.md`.
+Before modifying this project, read [agent/README.md](agent/README.md).

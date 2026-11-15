@@ -1,96 +1,100 @@
 # fmedit
 
-Un piccolo editor da terminale scritto in Bash, ispirato al progetto Zepto
-presente in questa macchina. Un solo script, senza compilazione e senza ncurses.
-È pensato per i file di testo e gli script di shell.
+A small Bash terminal editor, inspired by Zepto. One script, no compilation
+and no ncurses. Designed for text files and shell scripts.
 
-## Avvio
+`main` contains the English version. The [italiano branch](https://github.com/vroby65/fmedit/tree/italiano)
+contains the Italian version. To use it, run `git switch italiano` in a clone.
+
+## Getting started
 
 ```bash
-./fmedit appunti.txt
-./fmedit                  # nuovo buffer senza nome
-./fmedit -- -nome-file    # nome che inizia con un trattino
+./fmedit notes.txt
+./fmedit                 # new unnamed buffer
+./fmedit -- -file-name    # name beginning with a dash
 ```
 
-Richiede Bash 4+, un terminale con sequenze ANSI/VT e le utility `stty`, `mktemp`,
-`cp`, `mv`, `rm`; `readlink -f` serve per salvare attraverso un collegamento
-simbolico. Non usa Python durante l'esecuzione. È sviluppato e verificato su Linux.
+Requires Bash 4+, an ANSI/VT terminal, and `stty`, `mktemp`, `cp`, `mv`, `rm`.
+Saving through a symbolic link also requires `readlink -f`. Python is not needed
+at runtime. Developed and tested on Linux.
 
-Per aggiungerlo al proprio PATH, dalla cartella del progetto:
+To add it to your PATH, run from the project directory:
 
 ```bash
 mkdir -p ~/.local/bin
 ln -s "$PWD/fmedit" ~/.local/bin/fmedit
 ```
 
-## Comandi
+The symlink follows the branch checked out in this directory.
 
-| Tasto | Azione |
+## Commands
+
+| Key | Action |
 | --- | --- |
-| F1 | Aiuto |
-| F2 / Ctrl+S | Salva; chiede il nome per un nuovo buffer |
-| F10 | Salva ed esci |
-| Esc / Ctrl+Q | Esci; con modifiche chiede se salvare, scartare o annullare |
-| Frecce, Home, End, PgUp, PgDown | Sposta il cursore |
-| Ctrl+Home / Ctrl+End | Inizio / fine documento |
-| Shift+frecce, Shift+Home/End | Seleziona testo |
-| Ctrl+A | Seleziona tutto |
-| Ctrl+C / Ctrl+X / Ctrl+V | Copia / taglia / incolla negli appunti interni |
-| Ctrl+Z / Ctrl+Y | Annulla / ripeti (ultime 100 modifiche) |
-| F7 / Ctrl+F | Cerca testo letterale, distinguendo maiuscole e minuscole |
-| Ctrl+N | Cerca l'occorrenza successiva, ricominciando dall'inizio |
+| F1 | Help |
+| F2 / Ctrl+S | Save; ask for a name for a new buffer |
+| F10 | Save and quit |
+| Esc / Ctrl+Q | Quit; if modified, ask whether to save, discard or cancel |
+| Arrows, Home, End, PgUp, PgDown | Move the cursor |
+| Ctrl+Home / Ctrl+End | Start / end of document |
+| Shift+arrows, Shift+Home/End | Select text |
+| Ctrl+A | Select all |
+| Ctrl+C / Ctrl+X / Ctrl+V | Copy / cut / paste using the internal clipboard |
+| Ctrl+Z / Ctrl+Y | Undo / redo (last 100 edits) |
+| F7 / Ctrl+F | Find literal, case-sensitive text |
+| Ctrl+N | Find the next occurrence, wrapping to the beginning |
 
-Nei prompt si scrive la risposta e si preme Invio; Esc annulla.
-Il terminale deve inoltrare le combinazioni all'editor: alcune applicazioni
-intercettano i tasti funzione o Shift+frecce.
+Type a response in a prompt and press Enter; Esc cancels. Unsaved changes offer
+`s` to save, `d` to discard, and Enter to cancel quitting. Overwriting an existing
+file requires `y` or `Y`; an empty response cancels.
+The terminal must forward key combinations to the editor: some applications
+intercept function keys or Shift+arrows.
 
-## Funzionamento
+## Behavior
 
-- Palette coordinata con `fm`: sfondo grigio scuro, testo giallo tenue e
-  selezione petrolio; barre, prompt e aiuto usano gli stessi colori di `fm`.
-- Numeri di riga, scorrimento verticale e orizzontale, indicatore delle modifiche.
-  Un indice delle righe evita di ripercorrere il documento a ogni spostamento;
-  il disegno legge direttamente le righe della pagina visibile.
-- Undo/redo conserva solo il testo sostituito e inserito, fino a 100 modifiche,
-  anziché copiare l’intero documento per ogni carattere digitato.
-- Colori essenziali per commenti, stringhe e `$` nei file `.sh` e `.bashrc`;
-  l'analisi è limitata alla singola riga.
-- Incolla dal terminale tramite bracketed paste, registrato come una modifica.
-  I tasti di controllo incollati non vengono eseguiti come comandi dell'editor.
-- UTF-8 secondo la locale di Bash. Tab visualizzati a intervalli di quattro colonne.
-- Conserva esattamente il testo letto, compresa la presenza o assenza dell'ultimo
-  newline e i terminatori CRLF. I file contenenti NUL vengono rifiutati.
-- Salva tramite file temporaneo nella cartella di destinazione e rinomina finale;
-  preserva i permessi dei file esistenti. I file nuovi hanno permessi `0600`.
-  Segue i collegamenti simbolici esistenti senza sostituire il collegamento.
-- Ripristina modalità del terminale, cursore e schermo all'uscita e sui segnali
-  HUP, INT e TERM. Le modifiche non salvate restano solo in memoria.
+- Palette matches `fm`: dark gray background, muted yellow text and teal
+  selection; bars, prompts and help use the same colors as `fm`.
+- Line numbers, vertical and horizontal scrolling, and a modification indicator.
+  A line index avoids scanning the document on every movement; rendering reads
+  the visible page directly.
+- Undo/redo stores only replaced and inserted text, up to 100 edits, instead of
+  copying the whole document for every keystroke.
+- Basic colors for comments, strings and `$` in `.sh` and `.bashrc` files;
+  highlighting is limited to the current line.
+- Bracketed terminal paste is recorded as one edit. Pasted control keys do not
+  execute editor commands.
+- UTF-8 follows the Bash locale. Tabs display at four-column intervals.
+- Preserves the text exactly, including the presence or absence of a final
+  newline and CRLF endings. Files containing NUL bytes are rejected.
+- Saves through a temporary file in the destination directory and a final rename;
+  preserves existing permissions. New files have permissions `0600`.
+  Follows existing symbolic links without replacing the link.
+- Restores terminal mode, cursor and screen on exit and on HUP, INT and TERM.
+  Unsaved changes remain in memory only.
 
-## Limiti attuali
+## Current limitations
 
-Il buffer resta una stringa Bash e l’indice viene ricostruito dopo le modifiche:
-file molto grandi e righe molto lunghe possono ancora risultare lenti. Le
-selezioni estese conservate nella cronologia possono consumare molta memoria.
-Ogni carattere digitato è una voce di cronologia. Emoji, caratteri a doppia
-larghezza e segni combinanti possono disallineare il cursore. I caratteri di controllo nei file sono
-mostrati come `?`; non vengono inviati direttamente al terminale.
+The buffer is a Bash string and the index is rebuilt after edits: very large files
+and long lines can still be slow. Large selections in history may use substantial
+memory. Each typed character is one history entry. Emoji, double-width characters
+and combining marks may misalign the cursor. Control characters in files display
+as `?` and are never sent directly to the terminal.
 
-Non sono ancora presenti mouse, buffer multipli, sostituzione del testo o
-integrazione con gli appunti di sistema. Il salvataggio con rinomina sostituisce
-l'inode: eventuali hard link continuano a puntare alla vecchia versione. Non
-gestisce modifiche simultanee da altri programmi né garantisce la persistenza
-in caso di interruzione dell'alimentazione.
+Mouse support, multiple buffers, text replacement and system clipboard integration
+are not implemented. Saving by rename replaces the inode: hard links continue
+pointing to the old version. Concurrent changes from other programs are not
+handled, and persistence during a power failure is not guaranteed.
 
-## Verifica
+## Verification
 
-I test richiedono Python 3 della distribuzione e usano solo la libreria standard:
+Tests require the distribution's Python 3 and use only its standard library:
 
 ```bash
 bash -n fmedit
 python3 -m unittest discover -s tests -v
 ```
 
-Comprendono le operazioni sul buffer, la conservazione dei file e sessioni reali
-su pseudo-terminale per scorciatoie, incolla, prompt e ripristino del terminale.
-Verificano anche navigazione e modifica su 40.000 righe con i comandi esterni
-disabilitati, e salvataggio su 10.000 righe con UTF-8 e CRLF.
+Tests cover buffer operations, file preservation and real pseudo-terminal sessions
+for shortcuts, paste, prompts and terminal restoration. They also check navigation
+and editing across 40,000 lines with external commands disabled, saving 10,000
+UTF-8/CRLF lines, English help, overwrite confirmation and save/discard on exit.
