@@ -6,28 +6,33 @@ Un piccolo editor da terminale scritto in Bash, ispirato al progetto Zepto
 presente in questa macchina. Un solo script, senza compilazione e senza ncurses.
 È pensato per i file di testo e gli script di shell.
 
-## Avvio
+`main` contains the English version. The [italiano branch](https://github.com/vroby65/fmedit/tree/italiano)
+contains the Italian version. To use it, run `git switch italiano` in a clone.
+
+## Getting started
 
 ```bash
-./fmedit appunti.txt
-./fmedit                  # nuovo buffer senza nome
-./fmedit -- -nome-file    # nome che inizia con un trattino
+./fmedit notes.txt
+./fmedit                 # new unnamed buffer
+./fmedit -- -file-name    # name beginning with a dash
 ```
 
-Richiede Bash 4+, un terminale con sequenze ANSI/VT e le utility `stty`, `mktemp`,
-`cp`, `mv`, `rm`; `readlink -f` serve per salvare attraverso un collegamento
-simbolico. Non usa Python durante l'esecuzione. È sviluppato e verificato su Linux.
+Requires Bash 4+, an ANSI/VT terminal, and `stty`, `mktemp`, `cp`, `mv`, `rm`.
+Saving through a symbolic link also requires `readlink -f`. Python is not needed
+at runtime. Developed and tested on Linux.
 
-Per aggiungerlo al proprio PATH, dalla cartella del progetto:
+To add it to your PATH, run from the project directory:
 
 ```bash
 mkdir -p ~/.local/bin
 ln -s "$PWD/fmedit" ~/.local/bin/fmedit
 ```
 
-## Comandi
+The symlink follows the branch checked out in this directory.
 
-| Tasto | Azione |
+## Commands
+
+| Key | Action |
 | --- | --- |
 | F1 | Aiuto |
 | F2 / Ctrl+S | Salva; chiede il nome per un nuovo buffer |
@@ -93,7 +98,7 @@ bash -n fmedit
 python3 -m unittest discover -s tests -v
 ```
 
-Comprendono le operazioni sul buffer, la conservazione dei file e sessioni reali
-su pseudo-terminale per scorciatoie, incolla, prompt e ripristino del terminale.
-Verificano anche navigazione e modifica su 40.000 righe con i comandi esterni
-disabilitati, e salvataggio su 10.000 righe con UTF-8 e CRLF.
+Tests cover buffer operations, file preservation and real pseudo-terminal sessions
+for shortcuts, paste, prompts and terminal restoration. They also check navigation
+and editing across 40,000 lines with external commands disabled, saving 10,000
+UTF-8/CRLF lines, English help, overwrite confirmation and save/discard on exit.

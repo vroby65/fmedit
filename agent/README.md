@@ -38,7 +38,7 @@ python3 -m unittest discover -s tests -v
 git diff --check
 ```
 
-Per una verifica manuale, aprire un file temporaneo con `./fmedit`, modificare,
-salvare con F2 e uscire con Ctrl+Q. Aggiornare README e questa guida quando cambiano
-comandi, dipendenze, struttura, invarianti o procedure di verifica. Prima di
-concludere, eseguire i controlli pertinenti e rivedere il diff.
+For manual verification, open a temporary file with `./fmedit`, edit, save with F2
+and quit with Ctrl+Q. Update the README and this guide when commands, dependencies,
+structure, invariants or verification procedures change. Run relevant checks and
+review the diff before finishing.
